@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.fireflies.dffu.MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="@dimen/size_16dp"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/url_path"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16dp"
+            android:hint="@string/enter_city"
+            android:importantForAutofill="no"
+            android:inputType="textUri"
+            tools:text="@string/enter_city" />
+
+        <Button
+            android:id="@+id/start_download"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16dp"
+            android:background="@color/colorAccent"
+            android:text="@string/get_weather" />
+
+    </LinearLayout>
+</layout>
