@@ -12,4 +12,11 @@
     <string name="enter_city">Enter city</string>
     <string name="get_weather">What\'s the weather ?</string>
     <string name="no_query">No query entered, nothing to search for.</string>
+    <string name="search">Search</string>
+    <string name="weather_condition">Weather condition</string>
+    <string name="region">Region</string>
+    <string name="day">Day</string>
+    <string name="max">Max (ºC)</string>
+    <string name="min">Min (ºC)</string>
+    <string name="title_activity_add_weather">AddWeatherActivity</string>
 </resources>

@@ -2,6 +2,7 @@ package com.fireflies.myweather;
 
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -14,17 +15,25 @@ import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.loader.content.Loader;
 
-import com.fireflies.myweather.databinding.ActivityMainBinding;
+import com.fireflies.myweather.database.AppDatabase;
+import com.fireflies.myweather.database.WeatherEntry;
+import com.fireflies.myweather.databinding.ActivityCitySearchBinding;
+import com.fireflies.myweather.executers.AppExecutors;
+import com.fireflies.myweather.interfaces.IParser;
+import com.fireflies.myweather.models.Day;
+import com.fireflies.myweather.parsers.ParserFactory;
+import com.fireflies.myweather.responses.GetWeatherDataResponse;
 import com.fireflies.myweather.utilities.NetworkUtils;
 
 import java.io.IOException;
 import java.net.URL;
 
-public class MainActivity extends AppCompatActivity implements
+public class CitySearchActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<String> {
 
     /* A constant to save and restore the URL that is being displayed */
     private static final String SEARCH_QUERY_URL_EXTRA = "query";
+    private static final String TAG = CitySearchActivity.class.getSimpleName();
 
     /*
      * This number will uniquely identify our Loader and is chosen arbitrarily. You can change this
@@ -32,13 +41,18 @@ public class MainActivity extends AppCompatActivity implements
      */
     private static final int OPEN_MAP_SEARCH_LOADER = 22;
 
-    ActivityMainBinding binding;
+    // Data binding for the UI
+    private ActivityCitySearchBinding binding;
+
+    // AppDatabase instance
+    private AppDatabase mDb;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = DataBindingUtil.setContentView(MainActivity.this, R.layout.activity_main);
+        binding = DataBindingUtil.setContentView(CitySearchActivity.this, R.layout.activity_city_search);
 
+        mDb = AppDatabase.getsInstance(getApplicationContext());
 
         if (savedInstanceState != null) {
             String queryUrl = savedInstanceState.getString(SEARCH_QUERY_URL_EXTRA);
@@ -86,6 +100,8 @@ public class MainActivity extends AppCompatActivity implements
         URL openMapSearchUrl = NetworkUtils.buildUrl(openMapQuery);
         binding.cityQuery.setText(openMapSearchUrl.toString());
 
+        Log.d(TAG, openMapSearchUrl.toString());
+
         Bundle queryBundle = new Bundle();
         queryBundle.putString(SEARCH_QUERY_URL_EXTRA, openMapSearchUrl.toString());
 
@@ -103,7 +119,7 @@ public class MainActivity extends AppCompatActivity implements
          * one doesn't exist, we tell the LoaderManager to create one. If one does exist, we tell
          * the LoaderManager to restart it.
          */
-        LoaderManager loaderManager = LoaderManager.getInstance(MainActivity.this);
+        LoaderManager loaderManager = LoaderManager.getInstance(CitySearchActivity.this);
         Loader<String> openMapSearchLoader = loaderManager.getLoader(OPEN_MAP_SEARCH_LOADER);
         if (openMapSearchLoader == null) {
             loaderManager.initLoader(OPEN_MAP_SEARCH_LOADER, queryBundle, this);
@@ -114,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        getMenuInflater().inflate(R.menu.menu_city_search, menu);
         return true;
     }
 
@@ -186,7 +202,7 @@ public class MainActivity extends AppCompatActivity implements
                      * When we initially begin loading in the background, we want to display the
                      * loading indicator to the user
                      */
-                    //mLoadingIndicator.setVisibility(View.VISIBLE);
+                    binding.loadingIndicator.setVisibility(View.VISIBLE);
 
                     forceLoad();
                 }
@@ -231,7 +247,8 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onLoadFinished(@NonNull Loader<String> loader, String data) {
         /* When we finish loading, we want to hide the loading indicator from the user. */
-        //mLoadingIndicator.setVisibility(View.INVISIBLE);
+
+        binding.loadingIndicator.setVisibility(View.GONE);
         /*
          * If the results are null, we assume an error has occurred. There are much more robust
          * methods for checking errors, but we wanted to keep this particular example simple.
@@ -240,7 +257,30 @@ public class MainActivity extends AppCompatActivity implements
             showErrorMessage();
         } else {
             binding.jsonResponse.setText(data);
+
+
+            IParser parser = ParserFactory.getParser();
+            GetWeatherDataResponse jsonResponse = parser.fromJson(data, GetWeatherDataResponse.class);
+            Day day = jsonResponse.getForecast().getForeCastDays().get(0).getDay();
+            final WeatherEntry weatherEntry = new WeatherEntry(day.getCondition().getIcon(),
+                    jsonResponse.getLocation().getName(),
+                    jsonResponse.getLocation().getLocaltime(),
+//                    Long.parseLong(jsonResponse.getForecast().getForeCastDays().get(0).getDateEpoch()),
+                    Double.parseDouble(day.getMaxTempInC()),
+                    Double.parseDouble(day.getMinTempInC()));
+
+            AppExecutors.getsInstance().diskIO().execute(new Runnable() {
+                @Override
+                public void run() {
+                    mDb.weatherDao().insertWeather(weatherEntry);
+                }
+            });
+
+
+            Log.e(TAG, jsonResponse.getLocation().getRegion());
             showJsonDataView();
+
+            finish();
         }
     }
 
