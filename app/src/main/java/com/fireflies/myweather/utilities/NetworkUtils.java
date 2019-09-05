@@ -1,6 +1,7 @@
 package com.fireflies.myweather.utilities;
 
 import android.net.Uri;
+import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,20 +15,19 @@ import java.util.Scanner;
  */
 public class NetworkUtils {
 
+    private static String TAG = NetworkUtils.class.getSimpleName();
 
-    /*
-     * The sort field. One of stars, forks, or updated.
-     * Default: results are sorted by best match if no field is specified.
-     */
     final static String PARAM_SORT = "sort";
     final static String sortBy = "stars";
     private final static String PARAM_QUERY = "q";
     private static final String API_KEY = "4ae33f1faf6048cd82e25133190607";
     private final static String OPEN_MAP_BASE_URL = "http://api.apixu.com/v1/forecast.json?key=" + API_KEY;
-    private static String DEFAULT_CITY = "BANGALORE";
-    private static int DAYS = 4;
-    public static final String URL = "http://api.apixu.com/v1/forecast.json?key=" +
-            API_KEY + "&q=" + DEFAULT_CITY + "&days=" + DAYS + "";
+
+//
+//    private static String DEFAULT_CITY = "BANGALORE";
+//    private static int DAYS = 4;
+//    public static final String URL = "http://api.apixu.com/v1/forecast.json?key=" +
+//            API_KEY + "&q=" + DEFAULT_CITY + "&days=" + DAYS + "";
 
     /**
      * Builds the URL used to query OpenMap.
@@ -71,8 +71,12 @@ public class NetworkUtils {
             } else {
                 return null;
             }
+        } catch (Exception e) {
+            Log.e(TAG, e.getLocalizedMessage());
+            return null;
         } finally {
             urlConnection.disconnect();
         }
+
     }
 }

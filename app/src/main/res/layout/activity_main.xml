@@ -27,5 +27,24 @@
             android:background="@color/colorAccent"
             android:text="@string/get_weather" />
 
+        <TextView
+            android:id="@+id/city_query"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16dp"
+            android:layout_marginBottom="@dimen/size_16dp" />
+
+        <TextView
+            android:id="@+id/json_response"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16dp" />
+
+        <TextView
+            android:id="@+id/error_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/size_16dp" />
+
     </LinearLayout>
 </layout>

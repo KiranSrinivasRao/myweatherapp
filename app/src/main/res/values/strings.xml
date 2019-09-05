@@ -11,4 +11,5 @@
     <string name="enter_anything">Enter anything</string>
     <string name="enter_city">Enter city</string>
     <string name="get_weather">What\'s the weather ?</string>
+    <string name="no_query">No query entered, nothing to search for.</string>
 </resources>
