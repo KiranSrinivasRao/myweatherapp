@@ -20,4 +20,7 @@
 
 ## Weather App
 
-![](myweatherapp.gif)
+![My Weather App](myweatherapp.gif)
+
+## Swipe Left/ Right to delete cities
+![Delete option](delete_places.gif)
