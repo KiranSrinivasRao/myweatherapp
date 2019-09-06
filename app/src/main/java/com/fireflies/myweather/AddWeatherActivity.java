@@ -9,14 +9,20 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.fireflies.myweather.adapters.WeatherAdapter;
 import com.fireflies.myweather.database.AppDatabase;
 import com.fireflies.myweather.database.WeatherEntry;
 import com.fireflies.myweather.executers.AppExecutors;
+import com.fireflies.myweather.factories.AddWeatherViewModelFactory;
+import com.fireflies.myweather.viewmodel.AddWeatherViewModel;
+import com.fireflies.myweather.viewmodel.MainViewModel;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
@@ -24,13 +30,12 @@ import java.util.List;
 
 import static android.widget.LinearLayout.VERTICAL;
 
-public class AddWeatherActivity extends AppCompatActivity {
+public class AddWeatherActivity extends AppCompatActivity implements WeatherAdapter.ItemClickListener {
 
     private static final String LOG_TAG = AddWeatherActivity.class.getSimpleName();
     private static final int RESULT_FROM_SEARCH_CITY = 1453;
     private RecyclerView recyclerView;
     private WeatherAdapter adapter;
-    ///private WeatherAdapter.ItemClickListener itemClickListener;
 
     private AppDatabase mDb;
 
@@ -38,7 +43,6 @@ public class AddWeatherActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_weather);
-
         // Set the RecyclerView to its corresponding view
         recyclerView = findViewById(R.id.recycler_view);
         // Set the layout for the RecyclerView to be a linear layout, which measures and
@@ -46,7 +50,7 @@ public class AddWeatherActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         // Initialize the adapter and attach it to the RecyclerView
-        adapter = new WeatherAdapter(AddWeatherActivity.this);
+        adapter = new WeatherAdapter(AddWeatherActivity.this, this);
         recyclerView.setAdapter(adapter);
 
         mDb = AppDatabase.getsInstance(getApplicationContext());
@@ -57,9 +61,10 @@ public class AddWeatherActivity extends AppCompatActivity {
         recyclerView.addItemDecoration(decoration);
 
         /*
-         Add a touch helper to the RecyclerView to recognize when a user swipes to delete an item.
+         Adding a touch helper to the RecyclerView to recognize when a user swipes to delete an item.
          An ItemTouchHelper enables touch behavior (like swipe and move) on each ViewHolder,
          and uses callbacks to signal when a user is performing these actions.
+         Swipe Right or Swipe Left will delete the entry from database and refreshes the UI
          */
         new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
@@ -78,8 +83,11 @@ public class AddWeatherActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         int position = viewHolder.getAdapterPosition();
-                        List<WeatherEntry> tasks = adapter.getEntries();
-                        mDb.weatherDao().deleteWeather(tasks.get(position));
+                        List<WeatherEntry> entries = adapter.getEntries();
+                        mDb.weatherDao().deleteWeather(entries.get(position));
+                        // We don't need to call if we are using LiveData - once the object is deleted from DB
+                        // LiveData will notify
+                        // setupViewModel();
                     }
                 });
             }
@@ -96,36 +104,14 @@ public class AddWeatherActivity extends AppCompatActivity {
                 startActivityForResult(searchCityActivity, RESULT_FROM_SEARCH_CITY);
             }
         });
+
+        setupViewModel();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        // With Threading - Executors
-        AppExecutors.getsInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                final List<WeatherEntry> entries = mDb.weatherDao().getAllWeatherEntries();
-
-                adapter.setEntries(entries);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        for (int i = 0; i < entries.size(); i++) {
-                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getId()));
-                            Log.e(LOG_TAG, entries.get(i).getImageLocationURL());
-                            Log.e(LOG_TAG, entries.get(i).getRegion());
-                            Log.e(LOG_TAG, entries.get(i).getDay());
-                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getMaxTempInC()));
-                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getMinTempInC()));
-                        }
-                    }
-                });
-            }
-        });
-
+        Log.d(LOG_TAG, "+onResume()");
 
         // Without Threading and //.allowMainThreadQueries() was enabled in AppDatabase
 //        List<WeatherEntry> entries = mDb.weatherDao().getAllWeatherEntries();
@@ -141,10 +127,124 @@ public class AddWeatherActivity extends AppCompatActivity {
 
     }
 
+    private void setupViewModel() {
+
+        // ViewModel class handles the life cycle events with ease - so we have replaced to avoid memory leaks
+        // Retrieve data from ViewModel class
+        MainViewModel mainViewModel = ViewModelProviders.of(this).get(MainViewModel.class);
+
+        mainViewModel.getEntries()
+                .observe(this, new Observer<List<WeatherEntry>>() {
+                    @Override
+                    public void onChanged(List<WeatherEntry> weatherEntries) {
+                        Log.d(LOG_TAG, "Retrieve data from the db using ModelView<LiveData>");
+                        adapter.setEntries(weatherEntries);
+                    }
+                });
+
+
+
+        /*// LiveData Encapsulation - removing the executors and adding the Observers for which
+        // we need to define Owner of the Lifecycle aware components - for this it's our activity
+        final LiveData<List<WeatherEntry>> entries = mDb.weatherDao().getAllWeatherEntries();
+        entries.observe(this, new Observer<List<WeatherEntry>>() {
+            @Override
+            public void onChanged(List<WeatherEntry> weatherEntries) {
+                Log.d(LOG_TAG, "Retrieve data from the db using LiveData");
+                adapter.setEntries(weatherEntries);
+            }
+        });*/
+
+
+        // With Threading - Executors
+        /*AppExecutors.getsInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+
+                final List<WeatherEntry> entries = mDb.weatherDao().getAllWeatherEntries();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        adapter.setEntries(entries);
+
+                        Log.d(LOG_TAG, "Checking weather entries --- only for testing and debugging");
+
+                        for (int i = 0; i < entries.size(); i++) {
+                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getId()));
+                            Log.e(LOG_TAG, entries.get(i).getImageLocationURL());
+                            Log.e(LOG_TAG, entries.get(i).getRegion());
+                            Log.e(LOG_TAG, entries.get(i).getDay());
+                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getMaxTempInC()));
+                            Log.e(LOG_TAG, String.valueOf(entries.get(i).getMinTempInC()));
+                        }
+                    }
+                });
+            }
+        });*/
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+    }
+
+    @Override
+    public void onItemClick(final int itemId) {
+
+        // View Model way of retrieving data from Database
+        // Intialize the factory and setup view model for the same
+        AddWeatherViewModelFactory factory = new AddWeatherViewModelFactory(mDb, itemId);
+
+        final AddWeatherViewModel addWeatherViewModel = ViewModelProviders
+                .of(this, factory).get(AddWeatherViewModel.class);
+
+        addWeatherViewModel.getEntry().observe(AddWeatherActivity.this, new Observer<WeatherEntry>() {
+            @Override
+            public void onChanged(WeatherEntry weatherEntry) {
+                // Remember - We don't need updates so we remove the observer
+                addWeatherViewModel.getEntry().removeObserver(this);
+                Log.d(LOG_TAG, "Clicked on the item : " + weatherEntry.getId()
+                        + ", " + weatherEntry.getRegion());
+                Log.d(LOG_TAG, "Receiving database access from ViewModel<LiveData> ");
+            }
+        });
+
+
+
+        /*// Live Data of retrieving data from Database
+        final LiveData<WeatherEntry> entry = mDb.weatherDao().loadWeatherEntryByItemId(itemId);
+        entry.observe(this, new Observer<WeatherEntry>() {
+            @Override
+            public void onChanged(WeatherEntry weatherEntry) {
+                // Remember - We don't need updates so we remove the observer
+                entry.removeObserver(this);
+                Log.d(LOG_TAG, "Clicked on the item : " + weatherEntry.getId()
+                        + ", "+  weatherEntry.getRegion() );
+                Log.d(LOG_TAG, "Receiving database access from LiveData ");
+            }
+        });*/
+
+
+        // With Threading - Executors
+        /*AppExecutors.getsInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+
+                final WeatherEntry entry = mDb.weatherDao().loadWeatherEntryByItemId(itemId);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d(LOG_TAG, "Clicked on the item : " + entry.getId()
+                                + ", "+  entry.getRegion() );
+                    }
+                });
+
+            }
+        });*/
 
     }
 }

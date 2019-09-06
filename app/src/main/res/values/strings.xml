@@ -18,5 +18,5 @@
     <string name="day">Day</string>
     <string name="max">Max (ºC)</string>
     <string name="min">Min (ºC)</string>
-    <string name="title_activity_add_weather">AddWeatherActivity</string>
+    <string name="title_activity_add_weather">What\'s the weather ? Add (+) to know weather of any place provided by the OpenMap API </string>
 </resources>

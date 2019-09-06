@@ -262,10 +262,15 @@ public class CitySearchActivity extends AppCompatActivity implements
             IParser parser = ParserFactory.getParser();
             GetWeatherDataResponse jsonResponse = parser.fromJson(data, GetWeatherDataResponse.class);
             Day day = jsonResponse.getForecast().getForeCastDays().get(0).getDay();
+            String name = jsonResponse.getLocation().getName();
+            if (name.isEmpty()) {
+                name = jsonResponse.getLocation().getRegion().concat(",\n")
+                        .concat(jsonResponse.getLocation().getCountry());
+            }
+
             final WeatherEntry weatherEntry = new WeatherEntry(day.getCondition().getIcon(),
-                    jsonResponse.getLocation().getName(),
+                    name,
                     jsonResponse.getLocation().getLocaltime(),
-//                    Long.parseLong(jsonResponse.getForecast().getForeCastDays().get(0).getDateEpoch()),
                     Double.parseDouble(day.getMaxTempInC()),
                     Double.parseDouble(day.getMinTempInC()));
 
